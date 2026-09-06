@@ -2,8 +2,8 @@
 
 An MCP server that exposes common Kubernetes inspection and deployment operations to an MCP client.
 
-The project is designed for local Kind clusters. It currently connects to the kubeconfig context
-`kind-dev101`.
+The project is designed for local Kind clusters. It connects to the kubeconfig context in the
+`KUBERNETES_CONTEXT` environment variable, defaulting to `kind-dev101`.
 
 ## Features
 
@@ -33,7 +33,7 @@ Create the local clusters from PowerShell or a terminal:
 ```bash
 kind create cluster --name dev101
 kind create cluster --name sit101
-kind create cluster --name prod01
+kind create cluster --name prod101
 ```
 
 Kind creates these kubeconfig contexts:
@@ -41,15 +41,13 @@ Kind creates these kubeconfig contexts:
 ```text
 kind-dev101
 kind-sit101
-kind-prod01
+kind-prod101
 ```
 
-Verify the contexts and select the development cluster:
+Verify the contexts:
 
 ```bash
 kubectl config get-contexts
-kubectl config use-context kind-dev101
-kubectl cluster-info
 ```
 
 ## Install dependencies
@@ -68,8 +66,18 @@ Start the server over the standard MCP stdio transport:
 uv run python src/kubernetes_mcp/__init__.py
 ```
 
-The server reads the Kubernetes configuration from the default kubeconfig location and connects to
-the `kind-dev101` context.
+The server reads the Kubernetes configuration from the default kubeconfig location. Set
+`KUBERNETES_CONTEXT` before launching it to choose a cluster:
+
+PowerShell:
+
+```powershell
+$env:KUBERNETES_CONTEXT = "kind-sit101"
+uv run python src/kubernetes_mcp/__init__.py
+```
+
+For production, use `kind-prod101`. If the variable is omitted, the server connects to
+`kind-dev101`.
 
 ## Configure an MCP client
 
@@ -81,6 +89,9 @@ repository and use the same launcher shown above:
 	"mcpServers": {
 		"kubernetes": {
 			"command": "uv",
+			"env": {
+				"KUBERNETES_CONTEXT": "kind-sit101"
+			},
 			"args": [
 				"run",
 				"--directory",
@@ -132,18 +143,9 @@ deployment, call `restart_deployment` with:
 
 ## Switching clusters
 
-The current implementation is configured for `kind-dev101` in
-`src/kubernetes_mcp/__init__.py`. Before using another cluster, select its kubeconfig context:
-
-```bash
-kubectl config use-context kind-sit101
-# or
-kubectl config use-context kind-prod01
-```
-
-The server currently passes `context="kind-dev101"` directly to the Kubernetes client, so changing
-the active `kubectl` context alone does not change the context used by the MCP server. Update that
-context value in the source when targeting SIT or PROD, then restart the MCP server.
+Set `KUBERNETES_CONTEXT` in the MCP client configuration and restart the server process. For
+example, use `kind-dev101`, `kind-sit101`, or `kind-prod101`. The MCP server uses the selected
+context directly, regardless of which context is active in `kubectl`.
 
 ## Stop and delete clusters
 
@@ -152,7 +154,7 @@ To stop using the local clusters and remove their containers:
 ```bash
 kind delete cluster --name dev101
 kind delete cluster --name sit101
-kind delete cluster --name prod01
+kind delete cluster --name prod101
 ```
 
 Deleting a Kind cluster removes its local Kubernetes resources. Do not run these commands for a

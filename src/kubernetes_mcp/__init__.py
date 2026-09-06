@@ -1,13 +1,15 @@
 """MCP tools for inspecting a Kubernetes cluster."""
 
 from datetime import datetime, timezone
+import os
 
 from mcp.server.mcpserver import MCPServer
 from kubernetes import client, config
 
 mcp = MCPServer("kubernetes_mcp")
 
-config.load_kube_config(context="kind-dev101")
+kubernetes_context = os.getenv("KUBERNETES_CONTEXT", "kind-dev101")
+config.load_kube_config(context=kubernetes_context)
 
 v1 = client.VersionApi()
 
