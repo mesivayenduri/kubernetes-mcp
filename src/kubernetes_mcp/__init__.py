@@ -120,6 +120,75 @@ def get_pods(namespace: str, deployment: str) -> list[dict[str, str | int | None
     ]
 
 @mcp.tool()
+def describe_pod(namespace: str, pod_name: str) -> dict[str, object]:
+    """Return details about a pod, including status, containers, and node."""
+    core_v1 = client.CoreV1Api()
+    pod = core_v1.read_namespaced_pod(name=pod_name, namespace=namespace)
+
+    return {
+        "name": pod.metadata.name,
+        "namespace": pod.metadata.namespace,
+        "status": pod.status.phase,
+        "pod_ip": pod.status.pod_ip,
+        "node_name": pod.spec.node_name,
+        "start_time": (
+            pod.status.start_time.isoformat() if pod.status.start_time else None
+        ),
+        "created_at": (
+            pod.metadata.creation_timestamp.isoformat()
+            if pod.metadata.creation_timestamp
+            else None
+        ),
+        "labels": pod.metadata.labels or {},
+        "containers": [
+            {
+                "name": container.name,
+                "image": container.image,
+                "ready": next(
+                    (
+                        status.ready
+                        for status in (pod.status.container_statuses or [])
+                        if status.name == container.name
+                    ),
+                    False,
+                ),
+                "restart_count": next(
+                    (
+                        status.restart_count
+                        for status in (pod.status.container_statuses or [])
+                        if status.name == container.name
+                    ),
+                    0,
+                ),
+            }
+            for container in pod.spec.containers
+        ],
+    }
+
+@mcp.tool()
+def get_events(namespace: str, pod_name: str) -> list[dict[str, object]]:
+    """Return events for a pod in a namespace."""
+    core_v1 = client.CoreV1Api()
+    events = core_v1.list_namespaced_event(
+        namespace=namespace,
+        field_selector=f"involvedObject.name={pod_name}",
+    )
+    return [
+        {
+            "type": event.type,
+            "reason": event.reason,
+            "message": event.message,
+            "count": event.count or 0,
+            "timestamp": (
+                event.last_timestamp
+                or event.event_time
+                or event.metadata.creation_timestamp
+            ).isoformat(),
+        }
+        for event in events.items
+    ]
+
+@mcp.tool()
 def get_logs(namespace: str, pod_name: str, lines: int = 100) -> str:
     """Return the requested number of recent log lines for a pod."""
     core_v1 = client.CoreV1Api()

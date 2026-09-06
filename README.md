@@ -14,6 +14,8 @@ The server provides these MCP tools:
 | `get_k8s_version` | Returns the Kubernetes cluster version. |
 | `get_deployments` | Lists deployments in a namespace. |
 | `get_pods` | Lists pods for a deployment, including restart counts and creation times. |
+| `describe_pod` | Returns detailed status and container information for a pod. |
+| `get_events` | Returns recent Kubernetes events for a namespace or pod. |
 | `get_logs` | Returns recent logs for a pod. |
 | `scale_deployment` | Changes the desired replica count for a deployment. |
 | `restart_deployment` | Triggers a rolling restart by updating the deployment pod template. |
